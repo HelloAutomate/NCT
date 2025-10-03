@@ -1,0 +1,21 @@
+{
+  "name": "nct-ireland-demo",
+  "version": "2.2.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.cjs",
+    "dev": "nodemon server.cjs"
+  },
+  "dependencies": {
+    "@elevenlabs/client": "^0.6.2",
+    "@elevenlabs/elevenlabs-js": "^2.15.0",
+    "axios": "^1.7.7",
+    "body-parser": "^2.2.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
