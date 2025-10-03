@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NCT Ireland — Voice Assistant Demo</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========= NCT visual theme ========= */
+    :root{
+      --nct-green:#0B7A3E;
+      --nct-green-600:#096a37;
+      --nct-yellow:#FFD200;
+      --nct-cream:#FFF6CE;
+
+      --bg:#FFF6CE;
+      --bg-accent:#FFEFA6;
+
+      --panel:#ffffff;
+      --border:#D7DEE7;
+      --shadow:0 6px 18px rgba(0,0,0,.06);
+
+      --muted:#5f6b7a;
+      --card:#ffffff;
+
+      --ok:#16a34a;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Inter',system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      color:#0b1323;
+      background: linear-gradient(100deg, var(--bg) 0%, var(--bg) 50%, var(--bg-accent) 50.1%);
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:18px 20px 48px}
+
+    /* Brand header */
+    .brand{display:flex;align-items:center;gap:14px;padding:8px 0 10px}
+    .brand img{height:100px;width:auto}
+    .title{font-weight:800;letter-spacing:.3px;font-size:26px;color:#0b4f2b}
+    .sub{color:#11613a;font-size:13px;opacity:.9}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-left:auto}
+
+    /* Buttons */
+    button{
+      appearance:none;border:1px solid var(--border);background:#f5f7fa;color:#0b1323;
+      padding:10px 14px;border-radius:999px;cursor:pointer;font-weight:700;
+      box-shadow:var(--shadow);transition:filter .15s ease, transform .06s ease;
+    }
+    button:hover{filter:brightness(.98)} button:active{transform:translateY(1px)}
+    button.primary{background:linear-gradient(180deg,var(--nct-green),var(--nct-green-600));color:#fff;border-color:#07522a}
+    button.danger{background:linear-gradient(180deg,#e94545,#b81f1f);color:#fff;border-color:#9b1b1b}
+    button.ghost{background:#eaeef3;color:#4b5563;border-color:#d5dde7}
+    button:disabled{opacity:.55;cursor:not-allowed;filter:none}
+
+    /* Pills */
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;border:1px solid #e0e6ef;background:#f4f7fb;color:#334155}
+    .pill.ok{border-color:#bce5c9;background:#e8f8ef;color:#0f7a43}
+    .pill.warn{border-color:#f3d08a;background:#fff4d6;color:#8a5a06}
+    .pill.bad{border-color:#f2b0b0;background:#ffe5e5;color:#8a1a1a}
+
+    /* KPI row */
+    .kpi{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px}
+    .kpi .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 14px;min-width:200px;box-shadow:var(--shadow)}
+    .kpi .label{font-size:12px;color:var(--muted);letter-spacing:.3px;text-transform:uppercase}
+    .kpi .value{font-size:20px;font-weight:800;margin-top:6px}
+
+    /* Panels / layout */
+    .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-top:16px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+    .panel .hd{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);background:#f9fbff}
+    .panel .hd h2{font-size:14px;letter-spacing:.3px;text-transform:uppercase;color:#243142}
+    .panel .bd{padding:12px 14px;max-height:420px;overflow:auto;background:#fff}
+
+    /* Transcript */
+    .log{font-family:ui-monospace, Menlo, Consolas, monospace;font-size:13px;line-height:1.5}
+    .log .role{display:inline-block;min-width:64px;font-weight:700}
+    .log .caller{color:#1457c5}
+    .log .agent{color:#0b7a3e}
+
+    .muted{color:var(--muted)} .small{font-size:12px}
+
+    /* Stepper */
+    .steps{list-style:none;margin:0;padding:0}
+    .step{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #d7dfe8}
+    .step .dot{width:10px;height:10px;border-radius:50%;border:1px solid #a9b4c4;background:#cbd5e1}
+    .step.active .dot{background:var(--nct-yellow);border-color:#d6b200}
+    .step.done .dot{background:var(--ok);border-color:#0f8e61}
+    .step.fail .dot{background:#ef4444;border-color:#b91c1c}
+    .spin{width:12px;height:12px;border:2px solid rgba(0,0,0,.15);border-top-color:#334155;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Captured fields */
+    .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .field{background:#ffffff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 2px 6px rgba(0,0,0,.03)}
+    .field .label{font-size:11px;color:var(--muted);letter-spacing:.3px;text-transform:uppercase}
+    .field .value{font-size:16px;font-weight:700;margin-top:4px;min-height:20px;color:#0b1323}
+
+    footer{color:#6b7280}
+
+    /* --- NCT footer --- */
+.site-footer{
+  margin-top:28px;
+  background:#2f2f2f;     /* dark strip */
+  color:#e9eef4;
+  border-radius:10px;
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
+.site-footer .wrap-in{
+  display:grid;
+  grid-template-columns: 1.2fr .9fr .9fr 1.2fr;
+  gap:24px;
+  padding:22px 24px;
+  align-items:start;
+}
+.site-footer h4{
+  margin:0 0 10px 0;
+  font-size:14px;
+  letter-spacing:.2px;
+  color:#ffffff;
+}
+.site-footer p, .site-footer a{
+  margin:0 0 6px 0;
+  font-size:13px;
+  color:#d7dde5;
+  text-decoration:none;
+}
+.site-footer a:hover{ text-decoration:underline; }
+
+.site-footer .divider{
+  width:1px; background:#464646; height:auto; margin:0 6px;
+}
+
+/* bottom row */
+.site-footer .bottom{
+  display:flex; gap:12px; justify-content:space-between;
+  align-items:center; padding:12px 24px; border-top:1px solid #3a3a3a;
+  font-size:12px; color:#cfd6de;
+}
+.site-footer .social{ display:flex; gap:10px; align-items:center }
+.site-footer .social a{
+  width:28px; height:28px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;
+  background:#24a0da0f; border:1px solid #4a4a4a;
+}
+.site-footer .social svg{ width:16px; height:16px; fill:#cfd6de }
+@media (max-width: 900px){
+  .site-footer .wrap-in{ grid-template-columns:1fr 1fr; }
+  .site-footer .divider{ display:none; }
+}
+@media (max-width: 540px){
+  .site-footer .wrap-in{ grid-template-columns:1fr; }
+}
+
+  </style>
+</head>
+<body>
+  <audio id="out" autoplay playsinline style="display:none"></audio>
+
+  <div class="wrap">
+    <div class="brand">
+      <img src="/public/logo.png" alt="NCT logo" onerror="this.style.display='none'">
+      <div>
+        <div class="title">NCT Voice Assistant Demo</div>
+        <div class="sub">Live transcript • Agent activity • Captured data • FAQ knowledge • Email invite</div>
+      </div>
+      <div class="toolbar">
+        <button id="startBtn" class="primary">Start Call</button>
+        <button id="stopBtn"  class="danger"  disabled>End Call</button>
+        <button id="muteBtn"  class="ghost"   disabled>Mute</button>
+        <span id="state" class="pill">Idle</span>
+      </div>
+    </div>
+
+    <section class="kpi">
+      <div class="card"><div class="label">Call Time</div><div id="kDur" class="value">00:00</div></div>
+      <div class="card"><div class="label">Words</div><div id="kWords" class="value">0</div></div>
+      <div class="card"><div class="label">Agent Status</div><div id="kStatus" class="value">—</div></div>
+    </section>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="hd"><h2>Live Transcript</h2><span id="rec" class="pill warn" style="margin-left:8px;display:none">Recording…</span></div>
+        <div id="log" class="bd log"></div>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>Agent Activity</h2></div>
+        <div class="bd"><ul id="steps" class="steps"></ul></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="panel">
+        <div class="hd"><h2>Captured Data</h2></div>
+        <div class="bd">
+          <div class="grid-2">
+            <div class="field"><div class="label">Location</div><div id="cdLoc" class="value">—</div></div>
+            <div class="field"><div class="label">Appointment Date</div><div id="cdDate" class="value">—</div></div>
+            <div class="field"><div class="label">Appointment Time</div><div id="cdTime" class="value">—</div></div>
+            <div class="field"><div class="label">Phone</div><div id="cdPhone" class="value">—</div></div>
+            <div class="field"><div class="label">Email</div><div id="cdEmail" class="value">—</div></div>
+          </div>
+          <span id="emailStatus" class="pill" style="display:none;margin-top:12px;display:inline-flex"></span>
+          <div id="proposedNote" class="small muted" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="hd"><h2>FAQ (agent knowledge)</h2></div>
+        <div class="bd"><ul id="faqList"></ul></div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+  <div class="wrap-in">
+    <!-- Address -->
+    <div>
+      <h4>National Car Testing Service</h4>
+      <p>Registered Office,</p>
+      <p>Lakedrive 3026,</p>
+      <p>Citywest Business Campus,</p>
+      <p>Naas Road,</p>
+      <p>Dublin 24</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Links group 1 -->
+    <div>
+      <h4>&nbsp;</h4>
+      <p><a href="https://www.ncts.ie/about-us/">About Us</a></p>
+      <p><a href="https://www.ncts.ie/about-us/contact-us/">Contact Us</a></p>
+    </div>
+
+    <!-- Links group 2 -->
+    <div>
+      <h4>&nbsp;</h4>
+      <p><a href="https://www.ncts.ie/customer-charter/">Customer Charter</a></p>
+      <p><a href="https://www.ncts.ie/1231">Privacy</a></p>
+      <p><a href="https://www.ncts.ie/cookie-policy/">Cookies Policy</a></p>
+      <p><a href="https://www.ncts.ie/legal/">Legal</a></p>
+    </div>
+
+    <!-- Right column -->
+    <div>
+      <h4>&nbsp;</h4>
+      <p>All rights reserved.</p>
+      <p>© Applus+ Inspection Services Ireland Limited.</p>
+      <p>ISO 17020 accredited for the conduct of the NCT</p>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span>Follow us here</span>
+    <div class="social">
+      <!-- LinkedIn -->
+      <a href="https://www.linkedin.com/company/applus-automotive/" aria-label="LinkedIn">
+        <svg viewBox="0 0 24 24"><path d="M19 3A2.94 2.94 0 0 1 22 6v12a2.94 2.94 0 0 1-3 3H5a2.94 2.94 0 0 1-3-3V6a2.94 2.94 0 0 1 3-3h14ZM8.34 18.09V9.75H6.02v8.34h2.32Zm-.09-9.5a1.35 1.35 0 1 0-2.71 0a1.35 1.35 0 0 0 2.71 0ZM18.02 18.09v-4.54c0-2.42-1.29-3.54-3.02-3.54a2.6 2.6 0 0 0-2.35 1.29h-.03V9.75H10.3v8.34h2.32v-4.12c0-1.09.2-2.14 1.56-2.14s1.36 1.23 1.36 2.21v4.05h2.48Z"/></svg>
+      </a>
+      <!-- Facebook -->
+      <a href="https://www.facebook.com/nctireland/" aria-label="Facebook">
+        <svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.6 9.87v-6.98H7.9V12h2.5v-2.3c0-2.47 1.47-3.83 3.72-3.83c1.08 0 2.2.19 2.2.19v2.41h-1.24c-1.22 0-1.6.76-1.6 1.55V12h2.72l-.44 2.89h-2.28v6.98A10 10 0 0 0 22 12Z"/></svg>
+      </a>
+      <!-- Twitter/X -->
+      <a href="https://twitter.com/NCTIreland" aria-label="Twitter">
+        <svg viewBox="0 0 24 24"><path d="M17.53 3H20l-5.23 6.02L21 21h-6.54l-4.29-5.59L4.9 21H2.43l5.64-6.5L3 3h6.66l3.83 5.11L17.53 3Zm-1.15 16.42h1.79L7.72 4.49H5.86l10.52 14.93Z"/></svg>
+      </a>
+    </div>
+  </div>
+</footer>
+
+  </div>
+
+<script>
+/* ------------------- DOM + STATE ------------------- */
+const $=id=>document.getElementById(id);
+const logEl=$("log"), stepsEl=$("steps");
+const kDur=$("kDur"), kWords=$("kWords"), kStatus=$("kStatus");
+const state=$("state"), rec=$("rec");
+const startBtn=$("startBtn"), stopBtn=$("stopBtn"), muteBtn=$("muteBtn");
+const emailStatus=$("emailStatus");
+const cd={loc:$("cdLoc"),date:$("cdDate"),time:$("cdTime"),phone:$("cdPhone"),email:$("cdEmail")};
+const proposedNote=$("proposedNote");
+
+let ws=null, micStream=null, proc=null, ctx=null;
+let t0=null, words=0, muted=false;
+let opening=false, duckUntil=0, currentConnId=0;
+const thisTabId=(crypto && crypto.randomUUID)?crypto.randomUUID():String(Math.random());
+
+// ---- Audio playback queue (prevents overlap)
+let playCtx=null, audioQueue=[], isPlaying=false, currentSrc=null;
+
+/* ------------------- LOCATIONS ------------------- */
+const NCT_LOCATIONS=[ "Abbeyfeale","Arklow","Athlone","Ballina","Ballinasloe","Cahir","Cahirciveen","Carlow","Carndonagh","Carrick-on-Shannon","Castleisland","Castlerea","Cavan","Charleville","Clifden","Cork-Blarney","Cork-Little Island","Deansgrange","Derrybeg","Donegal Town","Drogheda","Dundalk","Ennis","Enniscorthy","Fonthill","Galway","Greenhills","Kells","Kilkenny","Killarney","Letterkenny","Limerick","Longford","Macroom","Monaghan","Mullingar","Naas","Navan","Nenagh","Northpoint 1","Northpoint 2","Portlaoise","Skibbereen","Sligo","Tralee","Tuam","Tullamore","Waterford","Westport","Youghal"];
+const LOC_ALIASES={ "northpoint1":"Northpoint 1","northpoint one":"Northpoint 1","north point one":"Northpoint 1","northpoint2":"Northpoint 2","northpoint two":"Northpoint 2","north point two":"Northpoint 2","little island":"Cork-Little Island","blarney":"Cork-Blarney" };
+const LOC_INDEX=[...NCT_LOCATIONS.map(s=>[s,s.toLowerCase()]), ...Object.entries(LOC_ALIASES).map(([k,v])=>[v,k])];
+
+function matchLocation(text){
+  const t=norm(text);
+  for(const [k,v] of Object.entries(LOC_ALIASES)) if(t.includes(k)) return v;
+  for(const [orig,low] of LOC_INDEX) if(t.includes(low)) return orig;
+  return null;
+}
+
+/* ------------------- DATE/TIME PARSERS ------------------- */
+function norm(s){ return String(s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+const MONTHS={january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,september:8,october:9,november:10,december:11,jan:0,feb:1,mar:2,apr:3,jun:5,jul:6,aug:7,sep:8,sept:8,oct:9,nov:10,dec:11};
+const ORD={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10,eleventh:11,twelfth:12,thirteenth:13,fourteenth:14,fifteenth:15,sixteenth:16,seventeenth:17,eighteenth:18,nineteenth:19,twentieth:20,"twenty first":21,"twentyfirst":21,"twenty second":22,"twentysecond":22,"twenty third":23,"twentythird":23,"twenty fourth":24,"twentyfourth":24,"twenty fifth":25,"twentyfifth":25,"twenty sixth":26,"twentysixth":26,"twenty seventh":27,"twentyseventh":27,"twenty eighth":28,"twentyeighth":28,"twenty ninth":29,"twentyninth":29,thirtieth:30,"thirty first":31,thirtyfirst:31};
+function ordWord(w){const x=w.replace(/[,\.]/g,'').trim();return ORD[x]||ORD[x.replace(/\s+/g,'')]||null;}
+function fmtDate(m,d){const dt=new Date(new Date().getFullYear(),m,d);return dt.toLocaleString(undefined,{month:'short',day:'numeric'});}
+
+function parseDate(text){
+  const t=norm(text);
+  let m=/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?\b/i.exec(text);
+  if(m){return fmtDate(MONTHS[m[1].toLowerCase()],Number(m[2]));}
+  m=/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?)\s+([a-z\s\-]+?)\b/i.exec(t);
+  if(m){const mo=MONTHS[m[1]], d=ordWord(m[2]); if(mo!=null && d) return fmtDate(mo,d);}
+  m=/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/.exec(t);
+  if(m){const d=Number(m[1]), mo=Number(m[2])-1; return fmtDate(mo,d);}
+  return null;
+}
+function wordToHour(w){return {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12}[w.toLowerCase()];}
+function dayPart(t,h){ if(/\bmorning\b/.test(t))return'am'; if(/\bafternoon|evening|night\b/.test(t))return'pm'; return (h>=8&&h<=12)?'pm':'am'; }
+function applyPart(h,m,part){ if(part==='pm'&&h!==12)h+=12; if(part==='am'&&h===12)h=0; return {h,m}; }
+function to12h(h,m){const ampm=h>=12?'PM':'AM'; let H=h%12; if(H===0)H=12; return `${String(H).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;}
+
+function parseTime(text){
+  const t=norm(text);
+  let a=/\b(\d{1,2})(?::(\d{2}))?\s?(am|pm)\b/i.exec(text);
+  if(a){let h=Number(a[1]), m=Number(a[2]||0), ap=a[3].toUpperCase(); if(ap==='PM'&&h!==12)h+=12; if(ap==='AM'&&h===12)h=0; return to12h(h,m);}
+  let b=/\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(t); if(b){return to12h(Number(b[1]),Number(b[2]));}
+  const half=/\bhalf\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/.exec(t);
+  if(half){const h=wordToHour(half[1]); const part=dayPart(t,h); return to12h(applyPart(h,30,part).h,30);}
+  const qpast=/\bquarter\s+past\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/.exec(t);
+  if(qpast){const h=wordToHour(qpast[1]); const part=dayPart(t,h); return to12h(applyPart(h,15,part).h,15);}
+  const qto=/\bquarter\s+to\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/.exec(t);
+  if(qto){let h=wordToHour(qto[1])-1; if(h<=0)h+=12; const part=dayPart(t,h); return to12h(applyPart(h,45,part).h,45);}
+  const oclk=/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*o'?clock\b/.exec(t);
+  if(oclk){const h=wordToHour(oclk[1]); const part=dayPart(t,h); return to12h(applyPart(h,0,part).h,0);}
+  return null;
+}
+
+/* -------- Phone digits (for transcript & capture) -------- */
+const DIGIT_WORDS = {
+  "zero":"0","oh":"0","o":"0",
+  "one":"1","two":"2","three":"3","four":"4","five":"5",
+  "six":"6","seven":"7","eight":"8","nine":"9"
+};
+// Only convert LONG runs (to avoid messing short phrases/regs)
+function wordsToDigitsBlock(text){
+  return text.replace(
+    /\b(?:(zero|oh|o|one|two|three|four|five|six|seven|eight|nine)[\s-]*){6,}\b/gi,
+    (m)=> m.match(/(zero|oh|o|one|two|three|four|five|six|seven|eight|nine)/gi)
+           .map(w=>DIGIT_WORDS[w.toLowerCase()]).join('')
+  );
+}
+function extractPhoneDigits(text){
+  const t = wordsToDigitsBlock(text);
+  const m = t.match(/\+?\d[\d\s-]{7,}\d/);
+  return m ? m[0].replace(/\D+/g,'') : null;
+}
+
+/* ------------------- EMAIL (spoken to real) ------------------- */
+function normalizeSpokenEmail(raw){
+  let s=' '+norm(raw)+' ';
+  s=s.replace(/\sat\s+/g,'@').replace(/\splus\s/g,'+').replace(/\sdot\s+/g,'.').replace(/\sdash\s+/g,'-').replace(/\sunderscore\s+/g,'_');
+  s=s.replace(/\s*@\s*/g,'@').replace(/\s*\.\s*/g,'.');
+  s=s.replace(/\.summary\b/gi,'');
+  s=s.replace(/\s+/g,' ').trim();
+  const m=/([\w.+-]+@[\w-]+(?:\.[\w.-]+)?\.(?:com|net|org|ie|co\.uk|gov|edu|io|ai))/i.exec(s);
+  return m?m[1]:null;
+}
+function parseEmail(text){
+  const m=/([\w.+-]+@[\w-]+(?:\.[\w.-]+)+)/i.exec(text||"");
+  if(m) return normalizeSpokenEmail(m[1]);      // clean spacing / dots
+  return normalizeSpokenEmail(text||"");        // spoken form to real
+}
+// For transcript: replace any spoken-email pattern with the normalized email
+function replaceSpokenEmailInText(text){
+  const normed = normalizeSpokenEmail(text);
+  if(!normed) return text;
+  // Match either real email or spoken form (e.g. "shane dot camilo at example dot com")
+  const spokenPattern = /([\w.+-]+(?:\s+dot\s+[\w.+-]+)*\s+at\s+[\w.-]+(?:\s+dot\s+[\w.-]+)+|[\w.+-]+@[\w.-]+\.\w+(?:\.\w+)?)/i;
+  return text.replace(spokenPattern, normed);
+}
+
+/* ------------------- UI HELPERS ------------------- */
+const fmt=n=>n.toString().padStart(2,"0");
+function setDur(){ if(!t0)return; const s=Math.floor((Date.now()-t0)/1000); kDur.textContent=`${fmt((s/60|0))}:${fmt(s%60)}`; }
+let durTimer=null; function startDur(){ if(durTimer)clearInterval(durTimer); t0=Date.now(); setDur(); durTimer=setInterval(setDur,1000); }
+function stopDur(){ if(durTimer)clearInterval(durTimer); durTimer=null; t0=null; kDur.textContent="00:00"; }
+function setState(txt,cls){ state.textContent=txt; state.className="pill "+(cls||""); }
+function enableInCall(on){ stopBtn.disabled=!on; muteBtn.disabled=!on; startBtn.disabled=on; rec.style.display=on?"inline-flex":"none"; }
+function addLine(role,text){
+  // Show normalized email and long digit-words as real digits
+  let shown = replaceSpokenEmailInText(wordsToDigitsBlock(text));
+  const d=document.createElement("div");
+  d.innerHTML=`<span class="role ${role==='agent'?'agent':'caller'}">${role==='agent'?'Agent':'You'}:</span> ${shown}`;
+  logEl.appendChild(d);
+  const w=shown.trim().split(/\s+/).filter(Boolean).length; words+=w; kWords.textContent=String(words); logEl.scrollTop=logEl.scrollHeight;
+}
+
+/* ------------------- STEPPER ------------------- */
+const steps={ loc:{label:"Checking Location",state:"pending"}, slot:{label:"Checking Available Slots",state:"pending"}, done:{label:"Slot Confirmed",state:"pending"}};
+function renderSteps(){ stepsEl.innerHTML=""; for(const key of ["loc","slot","done"]){ const s=steps[key]; const li=document.createElement("li"); li.className=`step ${s.state}`; li.dataset.key=key; li.innerHTML=`<span class="dot"></span>${s.label} ${s.state==='active'?'<span class="spin"></span>':''}`; stepsEl.appendChild(li);} }
+function stepSet(key,state){ steps[key].state=state; renderSteps(); }
+function stepActive(key){ stepSet(key,"active"); }
+function stepDone(key){ stepSet(key,"done"); }
+renderSteps();
+
+/* ------------------- BOOKING ------------------- */
+const booking = {
+  draft: { loc:null, date:null, time:null, phone:null, email:null },
+  final: { loc:null, date:null, time:null, phone:null, email:null },
+  confirmed: false
+};
+
+let autoSendTimer=null;
+let inviteSent=false;
+
+function renderFinal(){
+  cd.loc.textContent   = booking.final.loc   || '—';
+  cd.date.textContent  = booking.final.date  || '—';
+  cd.time.textContent  = booking.final.time  || '—';
+  cd.phone.textContent = booking.final.phone || '—';
+  cd.email.textContent = booking.final.email || '—';
+}
+function renderProposed(){
+  if (booking.confirmed){ proposedNote.textContent=""; return; }
+  const p=booking.draft;
+  const parts=[
+    p.loc&&`Location: ${p.loc}`,
+    p.date&&`Date: ${p.date}`,
+    p.time&&`Time: ${p.time}`,
+    p.phone&&`Phone: ${p.phone}`,
+    p.email&&`Email: ${p.email}`
+  ].filter(Boolean);
+  proposedNote.textContent = parts.length ? `Proposed → ${parts.join(" • ")}` : "";
+}
+function setDraft(p){
+  Object.assign(booking.draft,p);
+  renderProposed();
+  scheduleAutoFinalize();
+}
+function setFinalFromDraft(){
+  booking.final = { ...booking.draft };
+  booking.confirmed = true;
+  renderFinal();
+  renderProposed();
+}
+function hasDraftAll(){ const d=booking.draft; return !!(d.loc && d.date && d.time && d.email); }
+
+/* Agent should NOT overwrite user-provided contact details */
+function safeSet(field, value, role){
+  if(!value) return;
+  if(role==='agent' && booking.draft[field]) return; // keep user's original
+  setDraft({[field]: value});
+}
+
+/* Auto-finalize & auto-send (debounced) */
+function scheduleAutoFinalize(){
+  if (inviteSent || booking.confirmed || !hasDraftAll()) return;
+  clearTimeout(autoSendTimer);
+  autoSendTimer = setTimeout(() => {
+    if (inviteSent || booking.confirmed || !hasDraftAll()) return;
+    setFinalFromDraft();
+    inviteSent = true;
+    sendEmailInvite();
+  }, 1200);
+}
+
+/* ------------------- INFERENCE ------------------- */
+function maybeAutoConfirm(text, role){
+  if (role!=='caller' || booking.confirmed) return;
+  const t=norm(text);
+  if (/\b(yes|yeah|yep|confirm|locked?|lock it in|that works|sounds good|go ahead)\b/.test(t)){
+    if (hasDraftAll()) setFinalFromDraft();
+  }
+}
+function inferCaptures(text, role){
+  const email=parseEmail(text); if(email) safeSet('email', email, role);
+  const loc=matchLocation(text); if(loc) setDraft({loc});
+  const d=parseDate(text); if(d) setDraft({date:d});
+  const ti=parseTime(text); if(ti) setDraft({time:ti});
+
+  const phone = extractPhoneDigits(text);
+  if(phone) safeSet('phone', phone, role);
+
+  const t=norm(text);
+  if(/\bsummarise|summary\b/.test(t)){
+    const loc2=matchLocation(text); if(loc2)setDraft({loc:loc2});
+    const d2=parseDate(text); if(d2)setDraft({date:d2});
+    const ti2=parseTime(text); if(ti2)setDraft({time:ti2});
+    const ph2=extractPhoneDigits(text); if(ph2) safeSet('phone', ph2, role);
+  }
+
+  if(loc && steps.loc.state!=="done"){ stepActive('loc'); setTimeout(()=>stepDone('loc'), 350); }
+  if((d||ti) && steps.slot.state==='pending') stepActive('slot');
+  if(hasDraftAll()){ setTimeout(()=>{ stepDone('slot'); stepDone('done'); }, 250); }
+  maybeAutoConfirm(text, role);
+  scheduleAutoFinalize();
+}
+
+/* ------------------- AUDIO CAPTURE ------------------- */
+async function startMic(){
+  micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const src=ctx.createMediaStreamSource(micStream);
+  const node=ctx.createScriptProcessor(4096,1,1);
+  node.onaudioprocess=e=>{
+    if(!ws||ws.readyState!==WebSocket.OPEN) return;
+    if(muted||Date.now()<duckUntil) return;
+    const input=e.inputBuffer.getChannelData(0);
+    const pcm16k=resampleTo16kPCM(input,ctx.sampleRate);
+    const b64=base64FromPCM16(pcm16k);
+    ws.send(JSON.stringify({user_audio_chunk:b64}));
+  };
+  src.connect(node); node.connect(ctx.destination); proc=node;
+}
+function stopMic(){ try{proc&&proc.disconnect()}catch{};proc=null; try{ctx&&ctx.close()}catch{};ctx=null; try{micStream&&micStream.getTracks().forEach(t=>t.stop())}catch{};micStream=null; }
+function resampleTo16kPCM(f32,inRate){
+  const outRate=16000;if(inRate===outRate)return floatTo16(f32);
+  const ratio=inRate/outRate;const outLen=Math.floor(f32.length/ratio);
+  const out=new Int16Array(outLen);
+  for(let o=0;o<outLen;o++){
+    const idx=o*ratio,i0=idx|0,i1=Math.min(i0+1,f32.length-1),frac=idx-i0;
+    const s=f32[i0]*(1-frac)+f32[i1]*frac;out[o]=Math.max(-1,Math.min(1,s))*0x7fff;
+  }return out;
+}
+function floatTo16(f){const out=new Int16Array(f.length);for(let i=0;i<f.length;i++) out[i]=Math.max(-1,Math.min(1,f[i]))*0x7fff;return out;}
+function base64FromPCM16(int16){return btoa(String.fromCharCode.apply(null,new Uint8Array(new DataView(int16.buffer).buffer)));}
+
+/* ------------------- PLAYBACK QUEUE ------------------- */
+function ensurePlayCtx(sr){ if(!playCtx||playCtx.sampleRate!==sr){try{playCtx&&playCtx.close()}catch{}; playCtx=new (window.AudioContext||window.webkitAudioContext)({sampleRate:sr}); } }
+function pcm16Base64ToFloat32(b64){
+  const bin=atob(b64),len=bin.length;const i16=new Int16Array(len/2);
+  for(let i=0;i<len;i+=2)i16[i/2]=(bin.charCodeAt(i)|(bin.charCodeAt(i+1)<<8));
+  const f32=new Float32Array(i16.length);for(let i=0;i<i16.length;i++)f32[i]=i16[i]/0x7fff;return f32;
+}
+function enqueueAudio(b64,sampleRateHz){const sr=sampleRateHz||16000;const f32=pcm16Base64ToFloat32(b64);audioQueue.push({f32,sr});processAudioQueue();}
+function processAudioQueue(){
+  if(isPlaying||audioQueue.length===0)return;
+  const {f32,sr}=audioQueue.shift(); ensurePlayCtx(sr);
+  const buf=playCtx.createBuffer(1,f32.length,sr); buf.getChannelData(0).set(f32);
+  const src=playCtx.createBufferSource(); src.buffer=buf; src.connect(playCtx.destination);
+  currentSrc=src; isPlaying=true; const ms=(f32.length/sr)*1000; duckUntil=Date.now()+ms+120;
+  src.onended=()=>{isPlaying=false; currentSrc=null; processAudioQueue();}; src.start(0);
+}
+function clearAudioQueue(){ audioQueue=[]; isPlaying=false; try{currentSrc&&currentSrc.stop()}catch{}; currentSrc=null; }
+
+/* ------------------- Viewer WS (fan-out) ------------------- */
+(function connectViewerWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws';
+  const vws=new WebSocket(url);
+  vws.onmessage=(ev)=>{ try{
+    const msg=JSON.parse(ev.data);
+    if(msg.type==='started'){ startDur(); setState('Live','ok'); enableInCall(true); }
+    else if(msg.type==='ended'){ stopDur(); setState('Ended','bad'); enableInCall(false); }
+    else if(msg.type==='status'){ kStatus.textContent=msg.text||'—'; }
+    else if(msg.type==='transcript'){ addLine(msg.role||'caller',msg.text||''); }
+  }catch{} };
+})();
+
+/* ------------------- ElevenLabs WS ------------------- */
+async function openElevenWS(){
+  if(ws && ws.readyState===WebSocket.OPEN) return ws;
+  if(opening) return ws;
+  opening=true;
+  try{ if(ws && ws.readyState!==WebSocket.CLOSED){ ws.onopen=ws.onclose=ws.onerror=ws.onmessage=null; ws.close(); } }catch{}
+  const connId=++currentConnId;
+
+  let url=""; try{ url=(await (await fetch('/ws-signed-url')).json()).url||""; }catch{}
+  if(!url){ alert('No ElevenLabs signed URL from server. Check ELEVEN_API_KEY & ELEVENLABS_AGENT_ID.'); opening=false; return; }
+
+  const s=new WebSocket(url); ws=s;
+
+  s.onopen=async()=>{ if(connId!==currentConnId){ try{s.close()}catch{}; return; } opening=false; kStatus.textContent='Listening'; s.send(JSON.stringify({type:"conversation_initiation_client_data",tab_id:thisTabId,conn_id:connId})); await startMic(); };
+  s.onclose=()=>{ if(connId!==currentConnId) return; opening=false; };
+  s.onerror=(e)=>{ if(connId!==currentConnId) return; opening=false; console.error(e); };
+
+  s.onmessage=(ev)=>{ if(connId!==currentConnId) return; try{
+    const data=JSON.parse(ev.data);
+
+    if(data.type==="audio" && data.audio_event?.audio_base_64){
+      const sr=data.audio_event.sample_rate_hz||data.audio_event.sample_rate||16000;
+      enqueueAudio(data.audio_event.audio_base_64,sr);
+    }
+    if(data.type==="user_transcript"){
+      const t=data.user_transcription_event?.user_transcript||""; if(t){ inferCaptures(t,'caller'); fetch('/rt/transcript',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({role:'caller',text:t,tab_id:thisTabId})}); }
+    }
+    if(data.type==="agent_response"){
+      const t=data.agent_response_event?.agent_response||""; if(t){ inferCaptures(t,'agent'); fetch('/rt/transcript',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({role:'agent',text:t,tab_id:thisTabId})}); }
+    }
+    if(data.type==="interruption"){ clearAudioQueue(); }
+    if(data.type==="ping") s.send(JSON.stringify({type:"pong",event_id:data.ping_event?.event_id}));
+  }catch(e){ console.error(e); } };
+
+  return s;
+}
+
+/* ------------------- Controls ------------------- */
+async function startCall(){
+  startBtn.disabled=true;
+  logEl.innerHTML=''; words=0; kWords.textContent='0'; kStatus.textContent='—';
+  steps.loc.state=steps.slot.state=steps.done.state="pending"; renderSteps();
+
+  // reset booking
+  Object.assign(booking.draft,{loc:null,date:null,time:null,phone:null,email:null});
+  Object.assign(booking.final,{loc:null,date:null,time:null,phone:null,email:null});
+  booking.confirmed=false; renderFinal(); renderProposed();
+  inviteSent=false; clearTimeout(autoSendTimer);
+  emailStatus.style.display='none';
+
+  await fetch('/api/call/start',{method:'POST'}); startDur(); setState('Live','ok'); enableInCall(true);
+  try{
+    const faq=await (await fetch('/api/faq')).json();
+    const faqList=$('faqList'); faqList.innerHTML='';
+    (faq.items||[]).forEach(i=>{
+      const li=document.createElement('li');
+      li.innerHTML=`<span class="muted">Q:</span> ${i.q}<br><span class="muted">A:</span> ${i.a}`;
+      faqList.appendChild(li);
+    });
+  }catch{}
+  ws = await openElevenWS();
+}
+async function endCall(){ try{ws&&ws.close()}catch{}; ws=null; clearAudioQueue(); stopMic(); stopDur(); setState('Ended','bad'); enableInCall(false); await fetch('/api/call/stop',{method:'POST'}); startBtn.disabled=false; }
+async function mute(){ muted=!muted; muteBtn.textContent=muted?'Unmute':'Mute'; }
+
+async function sendEmailInvite(){
+  emailStatus.style.display='inline-flex';
+  emailStatus.textContent='Sending…';
+  const res=await fetch('/api/email-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ email:booking.final.email, loc:booking.final.loc, date:booking.final.date, time:booking.final.time, phone:booking.final.phone })});
+  const j=await res.json().catch(()=>({ok:false}));
+  emailStatus.textContent=j.ok?'Email confirmation sent! ✅':'Failed ❌';
+  setTimeout(()=>{ emailStatus.style.display='none'; },2200);
+}
+
+startBtn.addEventListener('click',startCall);
+stopBtn.addEventListener('click',endCall);
+muteBtn.addEventListener('click',mute);
+window.addEventListener('keydown',e=>{ if(e.key==='Escape') endCall(); });
+</script>
+</body>
+</html>
